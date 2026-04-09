@@ -86,6 +86,8 @@ function getOPInfo(opRaw) {
   if (!op) return { ok: false, msg: 'Ingresa una OP.', data: null };
 
   const sheets = getCandidateSheets(op);
+  let fallbackMatch = null;
+
   for (const sh of sheets) {
     const lastRow = sh.getLastRow();
     if (lastRow < 2) continue;
@@ -116,19 +118,36 @@ function getOPInfo(opRaw) {
       fila: row,
       op: op,
       codigo: codigo,
-      descripcion: descripcion
+      descripcion: descripcion,
+      codigoVacio: !String(codigo || '').trim()
     });
 
+    const result = {
+      op,
+      codigo,
+      descripcion,
+      fila: row,
+      hoja: sh.getName()
+    };
+
+    if (String(codigo || '').trim()) {
+      return {
+        ok: true,
+        msg: 'OK',
+        data: result
+      };
+    }
+
+    if (!fallbackMatch) {
+      fallbackMatch = result;
+    }
+  }
+
+  if (fallbackMatch) {
     return {
-      ok: true,
-      msg: 'OK',
-      data: { 
-        op,
-        codigo,
-        descripcion,
-        fila: row,
-        hoja: sh.getName()
-      }
+      ok: false,
+      msg: `La OP "${op}" fue encontrada en la hoja "${fallbackMatch.hoja}", pero sin código en la columna esperada.`,
+      data: fallbackMatch
     };
   }
 
