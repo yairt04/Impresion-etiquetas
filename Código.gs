@@ -90,6 +90,15 @@ function getOPInfo(opRaw) {
     const lastRow = sh.getLastRow();
     if (lastRow < 2) continue;
 
+    const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0] || [];
+    const normalizedHeaders = headers.map(_norm);
+    let codigoCol = normalizedHeaders.findIndex(h => h === 'CODIGO' || h === 'COD');
+    let descripcionCol = normalizedHeaders.findIndex(h => h === 'DESCRIPCION' || h === 'DESCRIPCION CLIENTE' || h === 'DESC CLIENTE');
+
+    // Fallback histórico: D=4 y E=5
+    codigoCol = codigoCol >= 0 ? codigoCol + 1 : 4;
+    descripcionCol = descripcionCol >= 0 ? descripcionCol + 1 : 5;
+
     const rangeColB = sh.getRange(2, 2, lastRow - 1, 1); // B desde fila 2
     const cell = rangeColB.createTextFinder(op)
       .matchCase(false)
@@ -99,8 +108,16 @@ function getOPInfo(opRaw) {
     if (!cell) continue;
 
     const row = cell.getRow();
-    const codigo = sh.getRange(row, 4).getDisplayValue();      // D
-    const descripcion = sh.getRange(row, 5).getDisplayValue(); // E
+    const codigo = sh.getRange(row, codigoCol).getDisplayValue();
+    const descripcion = sh.getRange(row, descripcionCol).getDisplayValue();
+
+    Logger.log({
+      hoja: sh.getName(),
+      fila: row,
+      op: op,
+      codigo: codigo,
+      descripcion: descripcion
+    });
 
     return {
       ok: true,
@@ -158,9 +175,9 @@ function generateZPLLabel1(opRaw, batchRaw, shiftRaw, qtyRaw) {
     '^CI28',
 
     '^FO0,10^A0N,50,20^FDPart No.^FS',
-    '^FO0,10^A0N,60,20^FD' + codigo + '^FS',
+    '^FO0,24^A0N,60,20^FD' + codigo + '^FS',
 
-    '^FO0,40^A0N,50,18^FD' + descripcion + '^FS',
+    '^FO0,52^A0N,50,18^FD' + descripcion + '^FS',
 
     '^FO0,125^A0N,50,18^FDQty: ' + qty + ' Labels^FS',
     '^FO0,135^A0N,50,18^FDBatch: ' + batch + '^FS',
