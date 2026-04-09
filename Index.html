@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Generación de etiquetas OP (PDF)</title>
+
+  <style>
+    :root{
+      --primary:#ff8500;
+      --primary-dark:#e36f00;
+      --border-soft:#e5e7eb;
+      --bg-body:#f3f4f6;
+      --text-main:#111827;
+      --text-muted:#6b7280;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    *{box-sizing:border-box;}
+    body{margin:16px;background:var(--bg-body);color:var(--text-main);}
+    h2{margin:0 0 12px;font-size:22px;font-weight:600;color:#111827;}
+    .subtitle{margin-bottom:16px;font-size:13px;color:var(--text-muted);}
+    .card{
+      border:1px solid var(--border-soft);
+      border-radius:16px;
+      padding:18px 18px 20px;
+      max-width:900px;
+      margin:0 auto;
+      background:#fff;
+      box-shadow:0 10px 25px rgba(15,23,42,0.06);
+    }
+    .card-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
+    .logo-app{height:48px;object-fit:contain;display:block;}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    input[type="text"],input[type="number"],input[type="date"],select{
+      flex:1;padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;
+      font-size:14px;color:#111827;background:#fff;outline:none;
+      transition:border-color .15s,box-shadow .15s,background .15s;
+    }
+    input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,133,0,.2);background:#fffaf3;}
+    button{
+      padding:9px 14px;border:0;border-radius:999px;cursor:pointer;
+      transition:background .15s,box-shadow .15s,transform .08s;
+      font-size:14px;display:inline-flex;align-items:center;justify-content:center;
+      gap:6px;white-space:nowrap;
+    }
+    button.primary{background:var(--primary);color:#fff;box-shadow:0 8px 18px rgba(255,133,0,.3);}
+    button.primary:hover{background:var(--primary-dark);box-shadow:0 10px 22px rgba(255,133,0,.4);transform:translateY(-1px);}
+    button.secondary{background:#e5e7eb;color:#111827;}
+    button.secondary:hover{background:#d1d5db;}
+    button.secondary:disabled,button.primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;transform:none;}
+    .muted{color:var(--text-muted);font-size:12px;margin-top:6px;line-height:1.4;}
+    .error{color:#b91c1c;font-size:13px;margin-top:10px;}
+    .ok{color:#166534;font-size:13px;margin-top:10px;}
+    .loader{display:none;font-size:12px;color:var(--text-muted);}
+    #qrTemp{display:none;}
+    .field{display:flex;flex-direction:column;gap:4px;margin-top:10px;}
+    .field label{font-size:13px;color:#374151;}
+    .tipo-switch{margin-bottom:10px;flex-wrap:wrap;}
+    .tipo-btn{
+      padding:6px 12px;border-radius:999px;border:1px solid #d1d5db;background:#f9fafb;
+      font-size:13px;color:#374151;
+    }
+    .tipo-btn.active{
+      background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 6px 14px rgba(255,133,0,.35);
+    }
+    .panel{margin-top:4px;border-radius:12px;padding:10px 10px 12px;background:#f9fafb;border:1px dashed #e5e7eb;}
+    .panel h3{margin:0 0 4px;font-size:15px;font-weight:600;color:#111827;}
+    .panel-header-note{font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+    .actions-row{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .actions-row .loader{margin-left:2px;}
+
+    /* ===== Checkbox Paquete (PISA) ===== */
+    .switchCard{
+      border:1px solid #d1d5db;border-radius:14px;background:#fff;
+      padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+      transition:box-shadow .2s, border-color .2s, background .2s;
+    }
+    .switchCard.active{
+      border-color:rgba(255,133,0,.55);
+      box-shadow:0 0 0 3px rgba(255,133,0,.18);
+      background:#fffaf3;
+    }
+    .switchLeft{display:flex;flex-direction:column;gap:2px;min-width:0;}
+    .switchTitle{font-weight:700;font-size:13px;color:#111827;}
+    .switchHint{font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .toggle{position:relative;width:44px;height:26px;flex:0 0 auto;}
+    .toggle input{opacity:0;width:0;height:0;}
+    .slider{
+      position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;
+      background:#e5e7eb;border-radius:999px;transition:.2s;border:1px solid #d1d5db;
+    }
+    .slider:before{
+      position:absolute;content:"";
+      height:20px;width:20px;left:3px;top:2px;
+      background:white;border-radius:50%;transition:.2s;
+      box-shadow:0 2px 6px rgba(15,23,42,.18);
+    }
+    .toggle input:checked + .slider{background:var(--primary);border-color:var(--primary);}
+    .toggle input:checked + .slider:before{transform:translateX(18px);}
+
+    .collapse{
+      overflow:hidden;max-height:0;opacity:0;transform:translateY(-6px);
+      transition:max-height .25s ease, opacity .18s ease, transform .18s ease;
+      will-change:max-height, opacity, transform;
+    }
+    .collapse.open{max-height:180px;opacity:1;transform:translateY(0);}
+    .softBox{margin-top:8px;padding:10px;border:1px dashed #e5e7eb;border-radius:12px;background:#fff;}
+
+    /* ===== Bolsa: "editable pero auto" ===== */
+    .hintline{font-size:12px;color:var(--text-muted);margin-top:2px;}
+    .mini{
+      padding:7px 12px;border-radius:999px;border:1px solid #d1d5db;background:#fff;
+      font-size:12px;color:#111827;box-shadow:none;transform:none;
+    }
+    .mini:hover{background:#f3f4f6;}
+
+    @media(max-width:600px){
+      body{margin:10px;}
+      .card{padding:14px 12px 16px;}
+      h2{font-size:19px;}
+      .panel{padding:8px 8px 10px;}
+      .row{flex-direction:column;align-items:stretch;}
+      .logo-app{height:36px;}
+      button{width:100%;}
+      .switchHint{white-space:normal;}
+    }
+  </style>
+
+  <!-- jsPDF + QR + Barcode -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+</head>
+
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2>Generación de etiquetas OP</h2>
+        <p class="subtitle">Selecciona el tipo de etiqueta, captura los datos y genera el PDF listo para imprimir.</p>
+      </div>
+      <img src="https://i.postimg.cc/K1rbZb4M/logo.png" alt="Logo" class="logo-app">
+    </div>
+
+    <!-- SWITCH -->
+    <div class="row tipo-switch">
+      <button class="tipo-btn active" data-tipo="rollo" id="btnTipoRollo">Rollo 40×22</button>
+      <button class="tipo-btn" data-tipo="qrg" id="btnTipoQRG">QR Genérico 40×32</button>
+      <button class="tipo-btn" data-tipo="bolsa" id="btnTipoBolsa">Bolsa / Caja 102×51</button>
+      <button class="tipo-btn" data-tipo="pisa"  id="btnTipoPisa">Pisa 102×152</button>
+    </div>
+
+    <!-- PANEL ROLLO -->
+    <div id="panelRollo" class="panel">
+      <div class="panel-header-note">Etiqueta de rollo (2 al paso). QR = código de producto.</div>
+      <h3>Etiqueta Rollo</h3>
+
+      <div class="field">
+        <label for="opRolloInput">OP (columna B de la bitácora)</label>
+        <input id="opRolloInput" type="text" placeholder="Ej. 13587 o OP-2025-000123" autofocus />
+      </div>
+
+      <div class="field">
+        <label for="qtyRolloInput">QTY (cantidad de etiquetas en el rollo)</label>
+        <input id="qtyRolloInput" type="number" min="1" placeholder="Ej. 200" />
+      </div>
+
+      <div class="field">
+        <label for="shiftRolloInput">Shift / No. de empleado</label>
+        <input id="shiftRolloInput" type="text" placeholder="Ej. 00025" />
+      </div>
+
+      <div class="actions-row">
+        <button class="primary" id="btnGenerarRollo" onclick="generarEtiquetaPDFRollo()">Generar etiqueta Rollo (PDF)</button>
+      </div>
+
+      <div class="muted">
+        Se toma código y descripción desde la bitácora.<br>
+        El batch se iguala a la OP. QTY y Shift se capturan manualmente.
+      </div>
+    </div>
+
+    <!-- PANEL QR GENÉRICO -->
+    <div id="panelQRG" class="panel" style="display:none;">
+      <div class="panel-header-note">Etiqueta QR Genérico (40×32 mm, 2 al paso). Misma info que Rollo. QR = texto del Código.</div>
+      <h3>Etiqueta QR Genérico</h3>
+
+      <div class="field">
+        <label for="opQRGInput">OP (columna B de la bitácora)</label>
+        <input id="opQRGInput" type="text" placeholder="Ej. 13587 o OP-2025-000123" />
+      </div>
+
+      <div class="field">
+        <label for="qtyQRGInput">QTY (cantidad de etiquetas)</label>
+        <input id="qtyQRGInput" type="number" min="1" placeholder="Ej. 200" />
+      </div>
+
+      <div class="field">
+        <label for="shiftQRGInput">Shift / No. de empleado</label>
+        <input id="shiftQRGInput" type="text" placeholder="Ej. 00025" />
+      </div>
+
+      <div class="actions-row">
+        <button class="primary" id="btnGenerarQRG" onclick="generarEtiquetaPDFQRG()">Generar etiqueta QR Genérico (PDF)</button>
+      </div>
+
+      <div class="muted">
+        Se toma código y descripción desde la bitácora usando la OP.<br>
+        Batch = OP. QR codifica el texto del <b>Código</b>.
+      </div>
+    </div>
+
+    <!-- PANEL PISA -->
+    <div id="panelPisa" class="panel" style="display:none;">
+      <div class="panel-header-note">Etiqueta PISA (102×152 mm). Logo + tabla + barcode + QR.</div>
+      <h3>Etiqueta Pisa</h3>
+
+      <div class="field">
+        <label for="opPisaInput">OP (columna B de la bitácora)</label>
+        <input id="opPisaInput" type="text" placeholder="Ej. 16257" />
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label for="fechaPisaInput">Fecha de entrada</label>
+          <input id="fechaPisaInput" type="date" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label for="idPisaInput">ID PISA (se escanea)</label>
+          <input id="idPisaInput" type="text" placeholder="1079968" />
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="codBarrasPisaInput">Código de barras (auto = ID PISA)</label>
+          <input id="codBarrasPisaInput" type="text" readonly />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="descClientePisaInput">Desc. Cliente (auto desde Sheets: columna E)</label>
+        <input id="descClientePisaInput" type="text" readonly placeholder="Se llena con la OP" />
+      </div>
+
+      <div class="row" style="align-items:flex-end;">
+        <div class="field" style="flex:1;">
+          <label for="lotePisaInput">Lote (auto = OP, editable)</label>
+          <input id="lotePisaInput" type="text" placeholder="Se llena con la OP" />
+        </div>
+
+        <div class="field" style="flex:1;">
+          <label for="rollosCajaPisaInput">Rollos (valor numérico)</label>
+          <input id="rollosCajaPisaInput" type="number" min="1" placeholder="12" />
+        </div>
+
+        <div class="field" style="flex:1;">
+          <label for="etqsRolloPisaInput">ETQS por rollo</label>
+          <input id="etqsRolloPisaInput" type="number" min="1" placeholder="1000" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Paquete</label>
+        <div id="paqueteCard" class="switchCard">
+          <div class="switchLeft">
+            <div class="switchTitle">Usar “Rollos por paquete”</div>
+            <div class="switchHint">Al activar, aparecen las opciones editables del paquete.</div>
+          </div>
+          <label class="toggle" aria-label="Paquete">
+            <input id="chkPaquetePisa" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div id="paqueteOptions" class="collapse">
+          <div class="softBox">
+            <div class="field" style="margin-top:0;">
+              <label for="textoPaquetePisaInput">Texto de paquete (se imprime tal cual)</label>
+              <input id="textoPaquetePisaInput" type="text" placeholder="Ej. 3 PAQUETES DE 4 ROLLOS DE 1000 ETQS" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="rollosLeyendaPisaInput">Texto “Rollos por …” (auto, editable)</label>
+        <input id="rollosLeyendaPisaInput" type="text" placeholder="12 ROLLOS DE 1000 ETQS" />
+      </div>
+
+      <div class="field">
+        <label for="millaresCajaPisaInput">Millares por (auto, editable)</label>
+        <input id="millaresCajaPisaInput" type="number" />
+      </div>
+
+      <div class="actions-row">
+        <button class="primary" id="btnGenerarPisa" onclick="generarEtiquetaPDFPisa()">Generar etiqueta Pisa (PDF)</button>
+      </div>
+
+      <div class="muted">
+        Desc. Cliente se llena desde Sheets con la OP.<br>
+        Barcode usa: ID PISA.<br>
+        QR usa: <b>Código</b> (texto del campo Código).<br>
+        Millares = (rollos × etqs)/1000 (editable).<br>
+      </div>
+    </div>
+
+    <!-- IMPRESIÓN -->
+    <div class="actions-row" style="margin-top:18px;">
+      <button class="secondary" id="btnImprimir" onclick="abrirVistaImpresion()" disabled>Imprimir última etiqueta generada</button>
+      <span class="loader" id="loader">Procesando…</span>
+    </div>
+
+    <div id="msg"></div>
+  </div>
+
+  <div id="qrTemp"></div>
+
+<script>
+/* ===============================
+   SWITCH PANEL
+================================ */
+const tipoButtons = document.querySelectorAll('.tipo-btn');
+const panelRollo  = document.getElementById('panelRollo');
+const panelQRG    = document.getElementById('panelQRG');
+const panelBolsa  = document.getElementById('panelBolsa');
+const panelPisa   = document.getElementById('panelPisa');
+let lastPdfUrl = null;
+
+function mostrarPanel(tipo){
+  panelRollo.style.display = (tipo === 'rollo') ? 'block' : 'none';
+  panelQRG.style.display   = (tipo === 'qrg')   ? 'block' : 'none';
+  panelBolsa.style.display = (tipo === 'bolsa') ? 'block' : 'none';
+  panelPisa.style.display  = (tipo === 'pisa')  ? 'block' : 'none';
+}
+tipoButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tipo = btn.dataset.tipo;
+    tipoButtons.forEach(b => b.classList.toggle('active', b === btn));
+    mostrarPanel(tipo);
+  });
+});
+
+const msg     = document.getElementById("msg");
+const loader  = document.getElementById("loader");
+const btnImp  = document.getElementById("btnImprimir");
+const qrTemp  = document.getElementById("qrTemp");
+
+function setLoading(b){
+  loader.style.display = b ? 'inline-block' : 'none';
+  const br  = document.getElementById('btnGenerarRollo');
+  const bqg = document.getElementById('btnGenerarQRG');
+  const bb  = document.getElementById('btnGenerarBolsa');
+  const bp  = document.getElementById('btnGenerarPisa');
+  if(br)  br.disabled  = b;
+  if(bqg) bqg.disabled = b;
+  if(bb)  bb.disabled  = b;
+  if(bp)  bp.disabled  = b;
+}
+
+function limpiarMsg(){
+  msg.textContent = '';
+  msg.className   = '';
+}
+
+function formateaFechaEtiqueta(f){
+  const d=new Date(f); if(isNaN(d)) return f;
+  return String(d.getDate()).padStart(2,'0')+"/"+
+         String(d.getMonth()+1).padStart(2,'0')+"/"+
+         d.getFullYear();
+}
+
+/* ===============================
+   QR GENERATOR (NÍTIDO + MARGEN)
+================================ */
+const QR_RENDER_SIZE = 2048;
+const QR_QUIET_ZONE  = 2;
+const QR_EC_LEVEL    = "H";
+
+function generarQRData(text, cb){
+  qrTemp.innerHTML="";
+  const div=document.createElement("div");
+  qrTemp.appendChild(div);
+
+  const level = (window.QRCode && window.QRCode.CorrectLevel && window.QRCode.CorrectLevel[QR_EC_LEVEL])
+    ? window.QRCode.CorrectLevel[QR_EC_LEVEL]
+    : undefined;
+
+  new QRCode(div,{
+    text:String(text||""),
+    width:QR_RENDER_SIZE,
+    height:QR_RENDER_SIZE,
+    correctLevel: level,
+    margin: QR_QUIET_ZONE
+  });
+
+  setTimeout(()=>{
+    const canvas=div.querySelector("canvas");
+    cb(canvas ? canvas.toDataURL("image/png") : null);
+  },260);
+}
+
+/* ===============================
+   VISTA DE IMPRESIÓN
+================================ */
+function abrirVistaImpresion(){
+  if(!lastPdfUrl){
+    msg.textContent="Primero genera una etiqueta.";
+    msg.className="error";
+    return;
+  }
+  const win = window.open(lastPdfUrl,"_blank");
+  if (!win) {
+    msg.textContent = "El navegador bloqueó la ventana emergente.";
+    msg.className = "error";
+    return;
+  }
+  win.onload = ()=> win.print();
+}
+
+/* ===============================
+   ROLLO (40x22, 2 al paso)
+================================ */
+const opRolloInput    = document.getElementById("opRolloInput");
+const qtyRolloInput   = document.getElementById("qtyRolloInput");
+const shiftRolloInput = document.getElementById("shiftRolloInput");
+
+opRolloInput.addEventListener('keydown', e => { if(e.key==='Enter') generarEtiquetaPDFRollo(); });
+qtyRolloInput.addEventListener('keydown', e => { if(e.key==='Enter') generarEtiquetaPDFRollo(); });
+shiftRolloInput.addEventListener('keydown', e => { if(e.key==='Enter') generarEtiquetaPDFRollo(); });
+
+function generarEtiquetaPDFRollo() {
+  const op    = opRolloInput.value.trim();
+  const qty   = qtyRolloInput.value.trim();
+  const shift = shiftRolloInput.value.trim();
+
+  limpiarMsg();
+  if(!op){   msg.textContent="Ingresa la OP.";   msg.className="error"; return; }
+  if(!qty){  msg.textContent="Ingresa QTY.";    msg.className="error"; return; }
+  if(!shift){msg.textContent="Ingresa Shift.";  msg.className="error"; return; }
+
+  setLoading(true);
+  btnImp.disabled = true;
+  if(lastPdfUrl){ URL.revokeObjectURL(lastPdfUrl); lastPdfUrl=null; }
+
+  google.script.run
+    .withSuccessHandler(res=>{
+      setLoading(false);
+      if(!res || !res.ok){ msg.textContent=res && res.msg ? res.msg : "No se encontró la OP."; msg.className="error"; return; }
+      const d = res.data || {};
+      d.qty   = qty;
+      d.batch = op;
+      d.shift = shift;
+      crearPdfEtiquetaRollo(d);
+    })
+    .withFailureHandler(err=>{
+      setLoading(false);
+      msg.textContent = "Error: " + err;
+      msg.className   = "error";
+    })
+    .generateZPLLabel1(op, op, shift, qty);
+}
+
+function crearPdfEtiquetaRollo(d){
+  const {jsPDF} = window.jspdf;
+  const LABEL_W=50, GAP=3, PAGE_W=LABEL_W*2+GAP, PAGE_H=30;
+  const doc = new jsPDF({orientation:'landscape',unit:'mm',format:[PAGE_W,PAGE_H]});
+
+  generarQRData(d.codigo, img=>{
+    dibujarEtiquetaRollo(doc,d,1,img);
+    dibujarEtiquetaRollo(doc,d,1+LABEL_W+GAP,img);
+
+    const blob = doc.output('blob');
+    lastPdfUrl = URL.createObjectURL(blob);
+    btnImp.disabled=false;
+    msg.textContent="Etiqueta Rollo generada.";
+    msg.className="ok";
+  });
+}
+
+function dibujarEtiquetaRollo(doc, d, offsetX, img) {
+  const x    = offsetX;
+  const left = x + 2;
+
+  doc.setFont("helvetica", "bold");
+
+  doc.setFontSize(5.2);
+  doc.text("Part No.", left, 4.3);
+
+  doc.setFontSize(7);
+  doc.text(String(d.codigo||""), left, 7.6);
+
+  const maxWidth = 30;
+  const lineStep = 2.6;
+  let y = 12;
+
+  doc.setFontSize(7.2);
+  const descLines = doc.splitTextToSize(String(d.descripcion||""), maxWidth);
+  descLines.forEach(line => { doc.text(line, left, y); y += lineStep; });
+
+  y += 2;
+
+  doc.setFontSize(6);
+  doc.text("Qty: " + String(d.qty||"") + " Labels", left, y); y += 2.4;
+  doc.text("Batch: " + String(d.batch||""), left, y); y += 2.4;
+  doc.text("Shift: " + String(d.shift||""), left, y);
+
+  if (img) {
+    const s = 15;
+    const qrX = x + 50 - s - 4;
+    const qrY = 30 - s - 1;
+    doc.addImage(img, "PNG", qrX, qrY, s, s, undefined, "FAST");
+  }
+}
+
+/* ===============================
+   ✅ QR GENÉRICO (40x32, 2 al paso)
+   FIX FINAL (ya no se “pega” a la izquierda):
+   - quitamos el X_SHIFT negativo (era lo que lo movía)
+   - márgenes internos consistentes
+   - cuadro blanco detrás del QR para evitar artefactos
+================================ */
+const opQRGInput    = document.getElementById("opQRGInput");
+const qtyQRGInput   = document.getElementById("qtyQRGInput");
+const shiftQRGInput = document.getElementById("shiftQRGInput");
+
+opQRGInput.addEventListener('keydown', e => { if(e.key==='Enter') generarEtiquetaPDFQRG(); });
+qtyQRGInput.addEventListener('keydown', e => { if(e.key==='Enter') generarEtiquetaPDFQRG(); });
+shiftQRGInput.addEventListener('keydown', e => { if(e.key==='Enter') generarEtiquetaPDFQRG(); });
+
+function generarEtiquetaPDFQRG() {
+  const op    = opQRGInput.value.trim();
+  const qty   = qtyQRGInput.value.trim();
+  const shift = shiftQRGInput.value.trim();
+
+  limpiarMsg();
+  if(!op){   msg.textContent="Ingresa la OP.";   msg.className="error"; return; }
+  if(!qty){  msg.textContent="Ingresa QTY.";    msg.className="error"; return; }
+  if(!shift){msg.textContent="Ingresa Shift.";  msg.className="error"; return; }
+
+  setLoading(true);
+  btnImp.disabled = true;
+  if(lastPdfUrl){ URL.revokeObjectURL(lastPdfUrl); lastPdfUrl=null; }
+
+  google.script.run
+    .withSuccessHandler(res=>{
+      setLoading(false);
+      if(!res || !res.ok){ msg.textContent=res && res.msg ? res.msg : "No se encontró la OP."; msg.className="error"; return; }
+      const d = res.data || {};
+      d.qty   = qty;
+      d.batch = op;
+      d.shift = shift;
+      crearPdfEtiquetaQRG(d);
+    })
+    .withFailureHandler(err=>{
+      setLoading(false);
+      msg.textContent = "Error: " + err;
+      msg.className   = "error";
+    })
+    .generateZPLLabel1(op, op, shift, qty);
+}
+
+function crearPdfEtiquetaQRG(d){
+  const {jsPDF} = window.jspdf;
+
+  const LABEL_W = 40;
+  const LABEL_H = 32;
+  const GAP = 3;
+  const PAGE_W = LABEL_W*2 + GAP;
+  const PAGE_H = LABEL_H;
+
+  // Si tu impresora agrega margen raro, ajusta aquí en mm:
+  //  +1.0 mueve todo a la derecha / -1.0 a la izquierda
+  const CAL_X = 0.0;
+
+  const doc = new jsPDF({orientation:'landscape',unit:'mm',format:[PAGE_W,PAGE_H]});
+
+  generarQRData(d.codigo, img=>{
+    dibujarEtiquetaQRG(doc, d, CAL_X + 0, img);
+    dibujarEtiquetaQRG(doc, d, CAL_X + LABEL_W + GAP, img);
+
+    const blob = doc.output('blob');
+    lastPdfUrl = URL.createObjectURL(blob);
+    btnImp.disabled=false;
+    msg.textContent="Etiqueta QR Genérico generada.";
+    msg.className="ok";
+  });
+}
+
+function dibujarEtiquetaQRG(doc, d, offsetX, img){
+  const x = offsetX;
+
+  const left = x + 2.0;
+  const top  = 3.0;
+
+  doc.setFont("helvetica","bold");
+
+  doc.setFontSize(5.2);
+  doc.text("Part No.", left, top);
+
+  doc.setFontSize(7.0);
+  doc.text(String(d.codigo||""), left, top + 3.6);
+
+  doc.setFontSize(6.4);
+  const descMaxW = 22.0;
+  const descLines = doc.splitTextToSize(String(d.descripcion||""), descMaxW).slice(0,4);
+  doc.text(descLines, left, top + 7.5);
+
+  let y = 26.2;
+  doc.setFontSize(5.7);
+  doc.text("Qty: " + String(d.qty||"") + " Labels", left, y); y += 2.3;
+  doc.text("Batch: " + String(d.batch||""), left, y); y += 2.3;
+  doc.text("Shift: " + String(d.shift||""), left, y);
+
+  if(img){
+    const qrSize = 18.2;
+    const rightPad  = 2.2;
+    const bottomPad = 2.0;
+
+    const qrX = x + 40 - qrSize - rightPad;
+    const qrY = 32 - qrSize - bottomPad;
+
+    // Fondo blanco
+    doc.setFillColor(255,255,255);
+    doc.rect(qrX-0.6, qrY-0.6, qrSize+1.2, qrSize+1.2, "F");
+
+    doc.addImage(img, "PNG", qrX, qrY, qrSize, qrSize, undefined, "NONE");
+  }
+}
+
+/* ===============================
+   BOLSA / CAJA
+================================ */
+const tipoEmpaqueInput      = document.getElementById("tipoEmpaqueInput");
+const opBolsaInput          = document.getElementById("opBolsaInput");
+const fechaBolsaInput       = document.getElementById("fechaBolsaInput");
+const epBolsaInput          = document.getElementById("epBolsaInput");
+const loteBolsaInput        = document.getElementById("loteBolsaInput");
+const rollosPaqueteInput    = document.getElementById("rollosPaqueteInput");
+const etiquetasRolloInput   = document.getElementById("etiquetasRolloInput");
+const etiquetasPaqueteInput = document.getElementById("etiquetasPaqueteInput");
+const btnRecalcBolsa        = document.getElementById("btnRecalcBolsa");
+const hintBolsaCalc         = document.getElementById("hintBolsaCalc");
+
+let etiqPaqueteDirty = false;
+
+opBolsaInput.addEventListener("input", ()=> { loteBolsaInput.value = opBolsaInput.value; });
+
+function calcEtiquetasPaquete(){
+  const r = Number(rollosPaqueteInput.value)||0;
+  const e = Number(etiquetasRolloInput.value)||0;
+  if(r>0 && e>0) return r*e;
+  return null;
+}
+function syncEtiquetasPaqueteIfNotDirty(){
+  if(etiqPaqueteDirty) return;
+  const v = calcEtiquetasPaquete();
+  etiquetasPaqueteInput.value = (v===null) ? "" : String(v);
+}
+function setHintBolsa(){
+  hintBolsaCalc.textContent = etiqPaqueteDirty
+    ? "Editado manualmente (no se sobrescribe)."
+    : "Se actualizará automáticamente mientras no lo edites.";
+}
+function onChangeRolloOrEtq(){ syncEtiquetasPaqueteIfNotDirty(); }
+
+rollosPaqueteInput.addEventListener("input", onChangeRolloOrEtq);
+etiquetasRolloInput.addEventListener("input", onChangeRolloOrEtq);
+
+etiquetasPaqueteInput.addEventListener("input", ()=>{
+  const v = etiquetasPaqueteInput.value.trim();
+  etiqPaqueteDirty = (v !== "");
+  setHintBolsa();
+});
+btnRecalcBolsa.addEventListener("click", ()=>{
+  etiqPaqueteDirty = false;
+  syncEtiquetasPaqueteIfNotDirty();
+  setHintBolsa();
+});
+
+function generarEtiquetaPDFBolsa(){
+  limpiarMsg();
+
+  const tipo  = tipoEmpaqueInput.value;
+  const op    = opBolsaInput.value.trim();
+  const fecha = fechaBolsaInput.value;
+  const ep    = epBolsaInput.value.trim();
+  const lote  = loteBolsaInput.value.trim();
+
+  const r     = Number(rollosPaqueteInput.value)||0;
+  const er    = Number(etiquetasRolloInput.value)||0;
+  const epqt  = Number(etiquetasPaqueteInput.value)||0;
+
+  if(!op){    msg.textContent="Ingresa la OP."; msg.className="error"; return; }
+  if(!fecha){ msg.textContent="Ingresa la fecha de entrada."; msg.className="error"; return; }
+  if(!ep){    msg.textContent="Ingresa el EP."; msg.className="error"; return; }
+  if(!lote){  msg.textContent="Ingresa el lote."; msg.className="error"; return; }
+  if(!(r>0 && er>0)){
+    msg.textContent="Completa rollos y etiquetas por rollo.";
+    msg.className="error"; return;
+  }
+  if(!(epqt>0)){
+    msg.textContent="Ingresa etiquetas por paquete/caja (auto o manual).";
+    msg.className="error"; return;
+  }
+
+  setLoading(true);
+  btnImp.disabled = true;
+  if(lastPdfUrl){ URL.revokeObjectURL(lastPdfUrl); lastPdfUrl=null; }
+
+  google.script.run
+    .withSuccessHandler(res=>{
+      setLoading(false);
+      if(!res || !res.ok){ msg.textContent=res && res.msg ? res.msg : "No se encontró la OP."; msg.className="error"; return; }
+
+      const base = res.data || {};
+      const d = {
+        tipoEmpaque: tipo,
+        op, fecha, ep, lote,
+        rollos:r, etiqRollo:er, etiqPaquete:epqt,
+        codigo: base.codigo,
+        descripcion: base.descripcion
+      };
+      crearPdfEtiquetaBolsa(d);
+    })
+    .withFailureHandler(err=>{
+      setLoading(false);
+      msg.textContent = "Error: " + err;
+      msg.className   = "error";
+    })
+    .getOPInfo(op);
+}
+
+function crearPdfEtiquetaBolsa(d){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:[102,51]});
+
+  generarQRData(d.codigo,img=>{
+    dibujarEtiquetaBolsa(doc,d,img);
+
+    const blob=doc.output('blob');
+    lastPdfUrl=URL.createObjectURL(blob);
+    btnImp.disabled=false;
+    msg.textContent="Etiqueta Bolsa/Caja generada.";
+    msg.className="ok";
+  });
+}
+
+function dibujarEtiquetaBolsa(doc, d, imgData) {
+  doc.setFont("helvetica", "bold");
+
+  const SCALE_X = 102 / 812;
+  const SCALE_Y = 51 / 416;
+  const X = v => v * SCALE_X;
+  const Y = v => v * SCALE_Y;
+
+  doc.setFontSize(7);
+  doc.text('Fecha de Entrada', X(20), Y(20));
+  doc.setFontSize(8);
+  doc.text(formateaFechaEtiqueta(d.fecha), X(20), Y(55));
+
+  doc.setFontSize(7);
+  doc.text('Ep:', X(300), Y(60));
+  doc.setFontSize(8);
+  doc.text(String(d.ep||''), X(360), Y(55));
+
+  const descRectX = 20, descRectY = 100, descRectW = 770, descRectH = 82;
+  doc.rect(X(descRectX), Y(descRectY), X(descRectW), Y(descRectH), 'S');
+
+  doc.setFontSize(8);
+  const descLines = doc.splitTextToSize(String(d.descripcion || ''), X(descRectW - 40));
+  doc.text(descLines, X(30), Y(125));
+
+  const bodyRectX = 20, bodyRectY = 182, bodyRectW = 770, bodyRectH = 220;
+  doc.rect(X(bodyRectX), Y(bodyRectY), X(bodyRectW), Y(bodyRectH), 'S');
+
+  doc.setFontSize(8);
+  doc.text('Codigo:', X(170), Y(210));
+  doc.text(String(d.codigo || ''), X(270), Y(210));
+
+  doc.text('Lote:', X(200), Y(250));
+  doc.text(String(d.lote || ''), X(270), Y(250));
+
+  const txtRollos = 'Rollos por ' + String(d.tipoEmpaque||'').toLowerCase() + ':';
+  doc.text(txtRollos, X(70), Y(280));
+  doc.text(String(d.rollos), X(270), Y(280));
+
+  doc.text('Etiquetas por rollo:', X(30), Y(320));
+  doc.text(Number(d.etiqRollo||0).toLocaleString(), X(270), Y(320));
+
+  const etiquetaCajaTxt = (d.tipoEmpaque === 'Caja' ? 'Etiquetas por caja:' : 'Etiquetas por paquete:');
+  doc.text(etiquetaCajaTxt, X(35), Y(360));
+  doc.text(Number(d.etiqPaquete||0).toLocaleString(), X(270), Y(360));
+
+  if (imgData) {
+    const qrX = X(600);
+    const qrY = Y(210);
+    const qrSize = Y(160);
+    doc.addImage(imgData,"PNG",qrX,qrY,qrSize,qrSize, undefined, "FAST");
+  }
+}
+
+/* ===============================
+   PISA (BARCODE NÍTIDO + QR GRANDE)
+================================ */
+const LOGO_TECTRONIC_URL = "https://i.postimg.cc/3w3nSvMf/Logo-tectronic.png";
+
+const opPisaInput             = document.getElementById("opPisaInput");
+const fechaPisaInput          = document.getElementById("fechaPisaInput");
+const idPisaInput             = document.getElementById("idPisaInput");
+const codBarrasPisaInput      = document.getElementById("codBarrasPisaInput");
+const descClientePisaInput    = document.getElementById("descClientePisaInput");
+const lotePisaInput           = document.getElementById("lotePisaInput");
+const rollosCajaPisaInput     = document.getElementById("rollosCajaPisaInput");
+const etqsRolloPisaInput      = document.getElementById("etqsRolloPisaInput");
+const millaresCajaPisaInput   = document.getElementById("millaresCajaPisaInput");
+const rollosLeyendaPisaInput  = document.getElementById("rollosLeyendaPisaInput");
+
+const chkPaquetePisa          = document.getElementById("chkPaquetePisa");
+const textoPaquetePisaInput   = document.getElementById("textoPaquetePisaInput");
+const paqueteOptions          = document.getElementById("paqueteOptions");
+const paqueteCard             = document.getElementById("paqueteCard");
+
+let loteDirty = false;
+let rollosLeyendaDirty = false;
+let millaresDirty = false;
+
+lotePisaInput.addEventListener("input", ()=> { loteDirty = true; });
+rollosLeyendaPisaInput.addEventListener("input", ()=> { rollosLeyendaDirty = true; });
+millaresCajaPisaInput.addEventListener("input", ()=> { millaresDirty = true; });
+
+function syncBarcodeFromId(){
+  const id = idPisaInput.value.trim();
+  codBarrasPisaInput.value = id;
+}
+
+function calcMillares(){
+  const r = Number(rollosCajaPisaInput.value)||0;
+  const e = Number(etqsRolloPisaInput.value)||0;
+  if(r>0 && e>0) return (r*e)/1000;
+  return null;
+}
+function syncMillaresIfNotDirty(){
+  if(millaresDirty) return;
+  const m = calcMillares();
+  millaresCajaPisaInput.value = (m===null) ? "" : String(Math.round(m));
+}
+function syncRollosLeyenda(){
+  const r = Number(rollosCajaPisaInput.value)||0;
+  const e = Number(etqsRolloPisaInput.value)||0;
+  if(r>0 && e>0){
+    rollosLeyendaPisaInput.value = `${r} ROLLOS DE ${e} ETQS`;
+  } else {
+    rollosLeyendaPisaInput.value = "";
+  }
+}
+function onTogglePaquete(){
+  const isPaquete = chkPaquetePisa.checked;
+  paqueteCard.classList.toggle("active", isPaquete);
+  paqueteOptions.classList.toggle("open", isPaquete);
+  if(isPaquete){
+    setTimeout(()=> textoPaquetePisaInput.focus(), 120);
+  }
+}
+chkPaquetePisa.addEventListener("change", onTogglePaquete);
+
+idPisaInput.addEventListener("input", syncBarcodeFromId);
+rollosCajaPisaInput.addEventListener("input", ()=>{
+  syncMillaresIfNotDirty();
+  if(!rollosLeyendaDirty) syncRollosLeyenda();
+});
+etqsRolloPisaInput.addEventListener("input", ()=>{
+  syncMillaresIfNotDirty();
+  if(!rollosLeyendaDirty) syncRollosLeyenda();
+});
+opPisaInput.addEventListener("input", ()=>{
+  if(!loteDirty) lotePisaInput.value = opPisaInput.value.trim();
+});
+
+const _imgCache = new Map();
+function loadImageInfo(url, cb){
+  if(!url) return cb(null);
+  if(_imgCache.has(url)) return cb(_imgCache.get(url));
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    try{
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img,0,0);
+      const info = { dataUrl: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight };
+      _imgCache.set(url, info);
+      cb(info);
+    }catch(e){
+      cb(null);
+    }
+  };
+  img.onerror = ()=> cb(null);
+  img.src = url;
+}
+
+/* ===== BARCODE (SVG -> PNG alta res) ===== */
+const BARCODE_WIDTH_BASE = 0.75;
+const BARCODE_SVG_HEIGHT = 140;
+const BARCODE_SCALE_PNG  = 6;
+
+const BARCODE_PARAMS_SVG = {
+  format: "CODE128",
+  displayValue: false,
+  margin: 0,
+  width: BARCODE_WIDTH_BASE,
+  height: BARCODE_SVG_HEIGHT,
+  lineColor: "#000000",
+  background: "#ffffff"
+};
+
+function generarBarcode128DataURL(text){
+  try{
+    const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    JsBarcode(svg, String(text||""), BARCODE_PARAMS_SVG);
+
+    const svgStr = new XMLSerializer().serializeToString(svg);
+    const svgData = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+
+    return new Promise((resolve)=>{
+      const img = new Image();
+      img.onload = () => {
+        const w = Math.ceil(img.width  * BARCODE_SCALE_PNG);
+        const h = Math.ceil(img.height * BARCODE_SCALE_PNG);
+
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+
+        const ctx = c.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+
+        resolve(c.toDataURL("image/png"));
+      };
+      img.onerror = ()=> resolve(null);
+      img.src = svgData;
+    });
+  }catch(e){
+    return Promise.resolve(null);
+  }
+}
+
+function generarEtiquetaPDFPisa(){
+  limpiarMsg();
+
+  const op      = opPisaInput.value.trim();
+  const fecha   = fechaPisaInput.value;
+  const idPisa  = idPisaInput.value.trim();
+  const lote    = lotePisaInput.value.trim();
+  const rollos  = Number(rollosCajaPisaInput.value)||0;
+  const etqs    = Number(etqsRolloPisaInput.value)||0;
+  const mill    = Number(millaresCajaPisaInput.value)||0;
+
+  const isPaquete = chkPaquetePisa.checked;
+  const textoPaquete = textoPaquetePisaInput.value.trim();
+  const rollosLeyenda = rollosLeyendaPisaInput.value.trim();
+
+  if(!op){ msg.textContent="Ingresa la OP."; msg.className="error"; return; }
+  if(!fecha){ msg.textContent="Ingresa la fecha de entrada."; msg.className="error"; return; }
+  if(!idPisa){ msg.textContent="Ingresa el ID PISA."; msg.className="error"; return; }
+  if(!lote){ msg.textContent="Ingresa el lote."; msg.className="error"; return; }
+  if(!(rollos>0 && etqs>0)){ msg.textContent="Ingresa rollos y ETQS por rollo."; msg.className="error"; return; }
+  if(!(mill>0)){ msg.textContent="Ingresa millares."; msg.className="error"; return; }
+
+  if(isPaquete){
+    if(!textoPaquete){ msg.textContent="Activas Paquete: escribe el texto de paquete."; msg.className="error"; return; }
+  }else{
+    if(!rollosLeyenda){ msg.textContent="Ingresa el texto de rollos."; msg.className="error"; return; }
+  }
+
+  setLoading(true);
+  btnImp.disabled = true;
+  if(lastPdfUrl){ URL.revokeObjectURL(lastPdfUrl); lastPdfUrl=null; }
+
+  google.script.run
+    .withSuccessHandler(res=>{
+      setLoading(false);
+      if(!res || !res.ok){
+        msg.textContent = (res && res.msg) ? res.msg : "No se encontró la OP.";
+        msg.className="error";
+        return;
+      }
+
+      const base = res.data || {};
+      const d = {
+        fecha,
+        idPisa,
+        codBarras: idPisa,
+        qrData: (base.codigo || ""),
+        codigo: base.codigo || "",
+        descCliente: base.descripcion || "",
+        descripcion: base.descripcion || "",
+        lote,
+        isPaquete,
+        rollosLeyenda: isPaquete ? textoPaquete : rollosLeyenda,
+        millaresCaja: mill,
+        rollos,
+        etqs
+      };
+
+      descClientePisaInput.value = d.descCliente || "";
+      crearPdfEtiquetaPisa(d);
+    })
+    .withFailureHandler(err=>{
+      setLoading(false);
+      msg.textContent = "Error: " + err;
+      msg.className="error";
+    })
+    .getOPInfo(op);
+}
+
+function crearPdfEtiquetaPisa(d){
+  const {jsPDF} = window.jspdf;
+  const PAGE_W = 152, PAGE_H = 102;
+  const doc = new jsPDF({orientation:'landscape', unit:'mm', format:[PAGE_W, PAGE_H]});
+  doc.setFont("helvetica","bold");
+
+  generarBarcode128DataURL(d.codBarras).then(barcodeImg=>{
+    generarQRData(d.qrData, qrImg=>{
+      loadImageInfo(LOGO_TECTRONIC_URL, logoInfo=>{
+        dibujarEtiquetaPisa(doc, d, logoInfo, barcodeImg, qrImg);
+
+        const blob = doc.output('blob');
+        lastPdfUrl = URL.createObjectURL(blob);
+        btnImp.disabled=false;
+        msg.textContent="Etiqueta PISA generada.";
+        msg.className="ok";
+      });
+    });
+  });
+}
+
+function dibujarFitImage(doc, info, x, y, boxW, boxH){
+  if(!info || !info.dataUrl || !info.w || !info.h) return;
+  const scale = Math.min(boxW / info.w, boxH / info.h);
+  const w = info.w * scale;
+  const h = info.h * scale;
+  const dx = x + (boxW - w)/2;
+  const dy = y + (boxH - h)/2;
+  doc.addImage(info.dataUrl, "PNG", dx, dy, w, h, undefined, "FAST");
+}
+
+function dibujarEtiquetaPisa(doc, d, logoInfo, barcodeImg, qrImg){
+  const W=152, H=102;
+  const m=3;
+  const x0=m, y0=m, x1=W-m, y1=H-m;
+
+  const logoBoxX = x0 + 1;
+  const logoBoxY = y0 + 1;
+  const logoBoxW = 46;
+  const logoBoxH = 14;
+  dibujarFitImage(doc, logoInfo, logoBoxX, logoBoxY, logoBoxW, logoBoxH);
+
+  const headerRightX = x1 - 2;
+  doc.setFontSize(12);
+  doc.text("Fecha de Entrada", headerRightX, y0 + 6, {align:"right"});
+  doc.setFontSize(12);
+  doc.text(formateaFechaEtiqueta(d.fecha), headerRightX, y0 + 12, {align:"right"});
+  doc.setFontSize(8);
+  doc.text("www.tectronic.com.mx", headerRightX, y0 + 16, {align:"right"});
+
+  const tableTop = y0 + 18;
+  doc.setLineWidth(0.6);
+  doc.rect(x0, tableTop, x1-x0, y1-tableTop, 'S');
+  doc.setLineWidth(0.35);
+
+  let y = tableTop;
+
+  const r1H=12;
+  const splitX = x0+74;
+  doc.line(splitX,y,splitX,y+r1H);
+  doc.line(x0,y+r1H,x1,y+r1H);
+
+  doc.setFontSize(16);
+  doc.text("ID PISA:", x0+3, y+8);
+  doc.text(String(d.idPisa||""), x0+28, y+8);
+
+  if(barcodeImg){
+    const cellX = splitX;
+    const cellW = (x1 - splitX);
+    const cellY = y;
+    const cellH = r1H;
+
+    const padX = 8;
+    const padTop = 1.4;
+    const idBandH = 4.2;
+
+    const bx = cellX + padX;
+    const by = cellY + padTop;
+    const bw = cellW - padX*2;
+    const bh = cellH - padTop - idBandH - 0.6;
+
+    doc.addImage(barcodeImg, "PNG", bx, by, bw, bh, undefined, "FAST");
+
+    doc.setFontSize(11);
+    const baseY = cellY + cellH - 1.2;
+    const centerX = cellX + cellW/2;
+    doc.text("ID:", centerX - 9, baseY, {align:"right"});
+    doc.text(String(d.codBarras||""), centerX - 7, baseY, {align:"left"});
+  }
+
+  y += r1H;
+
+  const r2H=16;
+  doc.line(x0,y+r2H,x1,y+r2H);
+
+  doc.setFontSize(12);
+  doc.text("Desc. Cliente:", x0+3, y+7);
+
+  doc.setFontSize(10.5);
+  const clientX = x0 + 34;
+  const clientW = (x1 - x0) - (clientX - x0) - 3;
+  const clientLines = doc.splitTextToSize(String(d.descCliente||""), clientW).slice(0,2);
+  doc.text(clientLines, clientX, y+7);
+
+  y += r2H;
+
+  const r3H=14;
+  doc.line(splitX,y,splitX,y+r3H);
+  doc.line(x0,y+r3H,x1,y+r3H);
+
+  doc.setFontSize(11);
+  doc.text("Código:", x0+3, y+6);
+  doc.setFontSize(10);
+  doc.text(String(d.codigo||""), x0+3, y+12);
+
+  doc.setFontSize(20);
+  doc.text("Lote:", splitX+8, y+10);
+  doc.text(String(d.lote||""), splitX+28, y+10);
+
+  y += r3H;
+
+  const r4H=18;
+  doc.line(x0,y+r4H,x1,y+r4H);
+
+  doc.setFontSize(11);
+  doc.text("Descripción:", x0+3, y+6);
+
+  doc.setFontSize(12);
+  const descLines = doc.splitTextToSize(String(d.descripcion||""), (x1-x0)-6).slice(0,2);
+  doc.text(descLines, x0+3, y+12);
+
+  y += r4H;
+
+  const c1X = x0+50;
+  const c2X = x0+100;
+  doc.line(c1X,y,c1X,y1);
+  doc.line(c2X,y,c2X,y1);
+
+  doc.setFontSize(11);
+  doc.text(d.isPaquete ? "Rollos por paquete" : "Rollos por caja", x0+3, y+6);
+
+  doc.setFontSize(10);
+  const rollosTextLines = doc.splitTextToSize(String(d.rollosLeyenda||""), (c1X-x0)-6).slice(0,2);
+  doc.text(rollosTextLines, x0+3, y+12);
+
+  doc.setFontSize(11);
+  doc.text(d.isPaquete ? "Millares por paquete" : "Millares por caja", c1X+3, y+6);
+
+  doc.setFontSize(26);
+  const millCenterX = c1X + (c2X - c1X)/2;
+  const millY = Math.min(y + 18, y1 - 4);
+  doc.text(String(d.millaresCaja||""), millCenterX, millY, {align:"center"});
+
+  if(qrImg){
+    const qrBoxX = c2X, qrBoxY = y;
+    const qrBoxW = (x1 - c2X);
+    const qrBoxH = (y1 - y);
+
+    const pad = 2;
+    const size = Math.max(10, Math.min(qrBoxW, qrBoxH) - pad*2);
+    const qrX = qrBoxX + (qrBoxW - size)/2;
+    const qrY = qrBoxY + (qrBoxH - size)/2;
+
+    doc.addImage(qrImg,"PNG",qrX,qrY,size,size, undefined, "NONE");
+  }
+}
+
+/* Desc Cliente en vivo al escribir OP */
+let _opLookupTimer = null;
+opPisaInput.addEventListener("input", ()=>{
+  const op = opPisaInput.value.trim();
+  if(!loteDirty) lotePisaInput.value = op;
+
+  if(!op){
+    descClientePisaInput.value = "";
+    return;
+  }
+  clearTimeout(_opLookupTimer);
+  _opLookupTimer = setTimeout(()=>{
+    google.script.run
+      .withSuccessHandler(res=>{
+        if(res && res.ok && res.data){
+          descClientePisaInput.value = String(res.data.descripcion || "");
+        }else{
+          descClientePisaInput.value = "";
+        }
+      })
+      .getOPInfo(op);
+  }, 250);
+});
+
+// Init defaults
+(function init(){
+  setHintBolsa();
+  syncEtiquetasPaqueteIfNotDirty();
+
+  syncBarcodeFromId();
+  syncMillaresIfNotDirty();
+  if(!rollosLeyendaDirty) syncRollosLeyenda();
+  onTogglePaquete();
+
+  mostrarPanel("rollo");
+})();
+</script>
+</body>
+</html>
