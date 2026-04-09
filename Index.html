@@ -210,6 +210,65 @@
       </div>
     </div>
 
+    <!-- PANEL BOLSA / CAJA -->
+    <div id="panelBolsa" class="panel" style="display:none;">
+      <div class="panel-header-note">Etiqueta Bolsa / Caja (102×51 mm). QR = código de producto.</div>
+      <h3>Etiqueta Bolsa / Caja</h3>
+
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label for="tipoEmpaqueInput">Tipo</label>
+          <select id="tipoEmpaqueInput">
+            <option value="Bolsa">Bolsa</option>
+            <option value="Caja">Caja</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="opBolsaInput">OP (columna B de la bitácora)</label>
+          <input id="opBolsaInput" type="text" placeholder="Ej. 16257" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label for="fechaBolsaInput">Fecha de entrada</label>
+          <input id="fechaBolsaInput" type="date" />
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="epBolsaInput">EP</label>
+          <input id="epBolsaInput" type="text" placeholder="Ej. 00025" />
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="loteBolsaInput">Lote (auto = OP, editable)</label>
+          <input id="loteBolsaInput" type="text" placeholder="Se llena con la OP" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:1;">
+          <label for="rollosPaqueteInput">Rollos por paquete/caja</label>
+          <input id="rollosPaqueteInput" type="number" min="1" placeholder="Ej. 12" />
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="etiquetasRolloInput">Etiquetas por rollo</label>
+          <input id="etiquetasRolloInput" type="number" min="1" placeholder="Ej. 1000" />
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="etiquetasPaqueteInput">Etiquetas por paquete/caja (auto, editable)</label>
+          <input id="etiquetasPaqueteInput" type="number" min="1" placeholder="Auto o manual" />
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="secondary mini" id="btnRecalcBolsa" type="button">Recalcular automático</button>
+        <span class="hintline" id="hintBolsaCalc">Se actualizará automáticamente mientras no lo edites.</span>
+      </div>
+
+      <div class="actions-row">
+        <button class="primary" id="btnGenerarBolsa" onclick="generarEtiquetaPDFBolsa()">Generar etiqueta Bolsa / Caja (PDF)</button>
+      </div>
+    </div>
+
     <!-- PANEL PISA -->
     <div id="panelPisa" class="panel" style="display:none;">
       <div class="panel-header-note">Etiqueta PISA (102×152 mm). Logo + tabla + barcode + QR.</div>
@@ -328,10 +387,10 @@ const panelPisa   = document.getElementById('panelPisa');
 let lastPdfUrl = null;
 
 function mostrarPanel(tipo){
-  panelRollo.style.display = (tipo === 'rollo') ? 'block' : 'none';
-  panelQRG.style.display   = (tipo === 'qrg')   ? 'block' : 'none';
-  panelBolsa.style.display = (tipo === 'bolsa') ? 'block' : 'none';
-  panelPisa.style.display  = (tipo === 'pisa')  ? 'block' : 'none';
+  if (panelRollo) panelRollo.style.display = (tipo === 'rollo') ? 'block' : 'none';
+  if (panelQRG) panelQRG.style.display   = (tipo === 'qrg')   ? 'block' : 'none';
+  if (panelBolsa) panelBolsa.style.display = (tipo === 'bolsa') ? 'block' : 'none';
+  if (panelPisa) panelPisa.style.display  = (tipo === 'pisa')  ? 'block' : 'none';
 }
 tipoButtons.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -448,6 +507,12 @@ function generarEtiquetaPDFRollo() {
       setLoading(false);
       if(!res || !res.ok){ msg.textContent=res && res.msg ? res.msg : "No se encontró la OP."; msg.className="error"; return; }
       const d = res.data || {};
+      console.log(d);
+      if(!d.codigo){
+        msg.textContent="La OP no tiene código (Part No.) en la bitácora.";
+        msg.className="error";
+        return;
+      }
       d.qty   = qty;
       d.batch = op;
       d.shift = shift;
@@ -465,6 +530,12 @@ function crearPdfEtiquetaRollo(d){
   const {jsPDF} = window.jspdf;
   const LABEL_W=50, GAP=3, PAGE_W=LABEL_W*2+GAP, PAGE_H=30;
   const doc = new jsPDF({orientation:'landscape',unit:'mm',format:[PAGE_W,PAGE_H]});
+
+  if(!d.codigo){
+    msg.textContent="No se puede generar QR sin código.";
+    msg.className="error";
+    return;
+  }
 
   generarQRData(d.codigo, img=>{
     dibujarEtiquetaRollo(doc,d,1,img);
@@ -547,6 +618,12 @@ function generarEtiquetaPDFQRG() {
       setLoading(false);
       if(!res || !res.ok){ msg.textContent=res && res.msg ? res.msg : "No se encontró la OP."; msg.className="error"; return; }
       const d = res.data || {};
+      console.log(d);
+      if(!d.codigo){
+        msg.textContent="La OP no tiene código (Part No.) en la bitácora.";
+        msg.className="error";
+        return;
+      }
       d.qty   = qty;
       d.batch = op;
       d.shift = shift;
@@ -574,6 +651,12 @@ function crearPdfEtiquetaQRG(d){
   const CAL_X = 0.0;
 
   const doc = new jsPDF({orientation:'landscape',unit:'mm',format:[PAGE_W,PAGE_H]});
+
+  if(!d.codigo){
+    msg.textContent="No se puede generar QR sin código.";
+    msg.className="error";
+    return;
+  }
 
   generarQRData(d.codigo, img=>{
     dibujarEtiquetaQRG(doc, d, CAL_X + 0, img);
@@ -644,7 +727,9 @@ const hintBolsaCalc         = document.getElementById("hintBolsaCalc");
 
 let etiqPaqueteDirty = false;
 
-opBolsaInput.addEventListener("input", ()=> { loteBolsaInput.value = opBolsaInput.value; });
+if (opBolsaInput && loteBolsaInput) {
+  opBolsaInput.addEventListener("input", ()=> { loteBolsaInput.value = opBolsaInput.value; });
+}
 
 function calcEtiquetasPaquete(){
   const r = Number(rollosPaqueteInput.value)||0;
@@ -664,19 +749,23 @@ function setHintBolsa(){
 }
 function onChangeRolloOrEtq(){ syncEtiquetasPaqueteIfNotDirty(); }
 
-rollosPaqueteInput.addEventListener("input", onChangeRolloOrEtq);
-etiquetasRolloInput.addEventListener("input", onChangeRolloOrEtq);
+if (rollosPaqueteInput) rollosPaqueteInput.addEventListener("input", onChangeRolloOrEtq);
+if (etiquetasRolloInput) etiquetasRolloInput.addEventListener("input", onChangeRolloOrEtq);
 
-etiquetasPaqueteInput.addEventListener("input", ()=>{
-  const v = etiquetasPaqueteInput.value.trim();
-  etiqPaqueteDirty = (v !== "");
-  setHintBolsa();
-});
-btnRecalcBolsa.addEventListener("click", ()=>{
-  etiqPaqueteDirty = false;
-  syncEtiquetasPaqueteIfNotDirty();
-  setHintBolsa();
-});
+if (etiquetasPaqueteInput) {
+  etiquetasPaqueteInput.addEventListener("input", ()=>{
+    const v = etiquetasPaqueteInput.value.trim();
+    etiqPaqueteDirty = (v !== "");
+    setHintBolsa();
+  });
+}
+if (btnRecalcBolsa) {
+  btnRecalcBolsa.addEventListener("click", ()=>{
+    etiqPaqueteDirty = false;
+    syncEtiquetasPaqueteIfNotDirty();
+    setHintBolsa();
+  });
+}
 
 function generarEtiquetaPDFBolsa(){
   limpiarMsg();
